@@ -1,9 +1,23 @@
 import math
 from math import pi # in case you want to reference pi while calculating
 import warnings
-import re
 
-#error propagation class
+"""
+The motivation for this autograd update is to:
+1. Proprely handle backpropagation in cases like: L = ax + bx
+- The first one would think dL/dx = a
+- The second one would think dL/dx = b; 
+- Actual answer: dL/dx == a + b
+2. I want to see how error propagates through neural networks to find out if the result is nonsensical. 
+- The more layers you have, the more calculations so possibly the more error? 
+- If computed with the partial derivative of the output w.r.t inputs, it seems like it should work no matter what because it is based on how much a small change in the inputs affects the outputs)
+"""
+#NOTE: To know the error of your predicted values, you need to do y_pred.backward() instead of loss.backward()
+# This is because you likely want to know the error of your predicted values rather than of the loss function
+#WARN: If you compute both the loss.backward() to update gradients and y_pred.backward(), make sure to zero_grad before every call to .backward()
+
+# I removed sig figs because they are not relevant to this update and didn't work before
+
 class err():
     """
     Error Propagation Calculating type
@@ -12,28 +26,15 @@ class err():
 
     Overloaded math functions to auto-calculate error:
     * / + - **
-
-    *sigfigs don't work yet; they are commented out
     """
     vars = {} # convert user's letters to dictionary indexing syntax and replace the values in the formula with str.replace()
 
-    def __init__(self, val, err, sig=-1):
-
-        if sig == -1: #significant figures
-            self.sig = self.sigfigs(val)
-        else:
-            self.sig = sig
+    def __init__(self, val, err):
 
         # warn if the input wasn't a string originally
         self.str = str(val)
         self.val = float(val)   # number
         self.err = float(err)   # plus/minus error
-
-    def sigfigs(self, val): #do this before the number is a float, otherwise the number may have a different amount of sig figs than intended
-        if '.' in val:
-            return len(val.lstrip('0.').replace('.', ''))
-        else:
-            return len(val.strip('0'))
 
     # operation overloading
 
@@ -44,11 +45,8 @@ class err():
 
         ans = self.val + o.val
 
-        #sig figs (numbers after decimal) # -1 to remove decimal point
-        sig = str(ans).index('.') + (min(len(str(self.val % 1)), len(str(o.val % 1))) - 1)
-
         print("sqrt(", self.err, "^2 + ", o.err, "^2)")
-        return err(str(ans), math.sqrt(self.err**2 + o.err**2), sig)
+        return err(str(ans), math.sqrt(self.err**2 + o.err**2))
     __radd__ = __add__
 
     def __sub__(self, o):
@@ -58,11 +56,8 @@ class err():
 
         ans = self.val - o.val
 
-        #sig figs (numbers after decimal) # -1 to remove decimal point
-        sig = str(ans).index('.') + (min(len(str(self.val % 1)), len(str(o.val % 1))) - 1)
-
         print("sqrt(", self.err, "^2 + ", o.err, "^2)")
-        return err(str(ans), math.sqrt(self.err**2 + o.err**2), sig)
+        return err(str(ans), math.sqrt(self.err**2 + o.err**2))
 
     def __rsub__(self, o):
         if type(o) != err:
@@ -83,8 +78,7 @@ class err():
 
         error = math.sqrt((self.err/self.val)**2 + (o.err/o.val)**2)*ans
         print("sqrt((",self.err,"/",self.val,")^2 + (",o.err,"/",o.val,")^2)*",ans,"=",error)
-        sig = self.sigfigs(str(ans))
-        return err(str(ans), error, sig)
+        return err(str(ans), error)
     __rmul__ = __mul__
 
     def __truediv__(self, o):
@@ -94,8 +88,7 @@ class err():
         ans = self.val / o.val
         error = math.sqrt((self.err/self.val)**2 + (o.err/o.val)**2)*ans
         print("sqrt((",self.err,"/",self.val,")^2 + (",o.err,"/",o.val,")^2)*",ans,"=",error)
-        sig = self.sigfigs(str(ans))
-        return err(str(ans), error, sig)
+        return err(str(ans), error)
 
     def __rtruediv__(self, o):
         if type(o) != err:
@@ -133,46 +126,4 @@ class err():
     #output formatting
     def __str__(self):
 
-        #decimals = len(str(self.val)) - self.sig-1#-1 for decimal point maybe
-        #print(decimals)
         return str(self.val) + " ± " + str(self.err) + " ( % " + str(round(self.err/self.val*100,4)) + " )"
-
-
-def main():
-    while True:
-        try:# for bad user input
-            var = input("Enter a variable; none to continue: ")
-            if var == '':
-                break
-
-            val = input(var + " = ")
-            e = input(var + " = " + val + " ± ")
-
-            err.vars[var] = err(val, e)
-
-        except Exception as e:
-            print(e)
-    print("\nType your equations below, ctrl-c to exit\n")
-    converted = ''
-    while True:
-        try:
-            eq = input()
-            if eq == '':#loop back to variable definition
-                break
-
-            converted = eq
-            pattern = re.compile(r'(' + '|'.join(sorted(err.vars.keys(),key=len, reverse=True)) + r')') #match the keys in the order of their length longest to shortest to avoid repeats
-            converted = pattern.sub(r'err.vars["\1"]', eq)
-            [print(i, "=", err.vars[i]) for i in set(pattern.findall(eq))]
-            print()
-
-            print(eq + ' = ' + str(eval(converted))) # don't use eval unless you are the only user 
-            print("\n")
-
-        except Exception as e:
-            print(str(e) + ": " + str(converted))
-    main()#recursive call so you can go back and change variables
-
-
-if __name__ == "__main__":
-    main()
