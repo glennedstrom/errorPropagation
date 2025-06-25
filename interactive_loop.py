@@ -1,6 +1,8 @@
 import re
-from errorProp import err
+from engine import err
+from math import pi # in case you want to reference pi while calculating
 
+vars = {} # convert user's letters to dictionary indexing syntax and replace the values in the formula with str.replace()
 def main():
     while True:
         try:# for bad user input
@@ -11,7 +13,7 @@ def main():
             val = input(var + " = ")
             e = input(var + " = " + val + " ± ")
 
-            err.vars[var] = err(val, e)
+            vars[var] = err(float(val), float(e))
 
         except Exception as e:
             print(e)
@@ -24,9 +26,9 @@ def main():
                 break
 
             converted = eq
-            pattern = re.compile(r'(' + '|'.join(sorted(err.vars.keys(),key=len, reverse=True)) + r')') #match the keys in the order of their length longest to shortest to avoid repeats
-            converted = pattern.sub(r'err.vars["\1"]', eq)
-            [print(i, "=", err.vars[i]) for i in set(pattern.findall(eq))]
+            pattern = re.compile(r'(' + '|'.join(sorted(vars.keys(),key=len, reverse=True)) + r')') #match the keys in the order of their length longest to shortest to avoid repeats
+            converted = pattern.sub(r'vars["\1"]', eq)
+            [print(i, "=", vars[i]) for i in set(pattern.findall(eq))]
             print()
 
             print(eq + ' = ' + str(eval(converted))) # don't use eval unless you are the only user 

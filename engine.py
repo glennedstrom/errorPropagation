@@ -1,8 +1,9 @@
 import math
-from math import pi # in case you want to reference pi while calculating
 import warnings
 
 """
+# ErrorGrad
+
 The motivation for this autograd update is to:
 1. Proprely handle backpropagation in cases like: L = ax + bx
 - The first one would think dL/dx = a
@@ -27,77 +28,70 @@ class err():
     Overloaded math functions to auto-calculate error:
     * / + - **
     """
-    vars = {} # convert user's letters to dictionary indexing syntax and replace the values in the formula with str.replace()
 
-    def __init__(self, val, err):
+    def __init__(self, val, err=0.0):
 
         # warn if the input wasn't a string originally
         self.str = str(val)
         self.val = float(val)   # number
         self.err = float(err)   # plus/minus error
 
+    @classmethod
+    def _ensure_err(cls, o):
+        if not isinstance(o, cls):
+            #warnings.warn("WARNING: types do not match, autoconverting with o.err=0")
+            return cls(str(o), 0)
+        return o
+
     # operation overloading
 
     def __add__(self, o):
-        if type(o) != err:
-            warnings.warn("WARNING: types do not match, autoconverting with o.err=0")
-            o = err(str(o), 0)
 
         ans = self.val + o.val
 
         print("sqrt(", self.err, "^2 + ", o.err, "^2)")
-        return err(str(ans), math.sqrt(self.err**2 + o.err**2))
+        return err(ans, math.sqrt(self.err**2 + o.err**2))
     __radd__ = __add__
 
     def __sub__(self, o):
-        if type(o) != err:
-            warnings.warn("WARNING: types do not match, autoconverting with o.err=0")
-            o = err(str(o), 0)
+        o = self._ensure_err(o)
 
         ans = self.val - o.val
 
         print("sqrt(", self.err, "^2 + ", o.err, "^2)")
-        return err(str(ans), math.sqrt(self.err**2 + o.err**2))
+        return err(ans, math.sqrt(self.err**2 + o.err**2))
 
     def __rsub__(self, o):
-        if type(o) != err:
-            warnings.warn("WARNING: types do not match, autoconverting with o.err=0")
-            o = err(str(o), 0)
+        o = self._ensure_err(o)
 
         ans = o.val - self.val
 
         print("sqrt(", self.err, "^2 + ", o.err, "^2)")
-        return err(str(ans), math.sqrt(self.err**2 + o.err**2), -1)
+        return err(ans, math.sqrt(self.err**2 + o.err**2))
 
     def __mul__(self, o):
-        if type(o) != err:
-            warnings.warn("WARNING: types do not match, autoconverting with o.err=0")
-            o = err(str(o), 0)
+        o = self._ensure_err(o)
 
         ans = self.val * o.val
 
         error = math.sqrt((self.err/self.val)**2 + (o.err/o.val)**2)*ans
         print("sqrt((",self.err,"/",self.val,")^2 + (",o.err,"/",o.val,")^2)*",ans,"=",error)
-        return err(str(ans), error)
+        return err(ans, error)
     __rmul__ = __mul__
 
     def __truediv__(self, o):
-        if type(o) != err:
-            warnings.warn("WARNING: types do not match, autoconverting with o.err=0")
-            o = err(str(o), 0)
+        o = self._ensure_err(o)
         ans = self.val / o.val
         error = math.sqrt((self.err/self.val)**2 + (o.err/o.val)**2)*ans
         print("sqrt((",self.err,"/",self.val,")^2 + (",o.err,"/",o.val,")^2)*",ans,"=",error)
-        return err(str(ans), error)
+        return err(ans, error)
 
     def __rtruediv__(self, o):
-        if type(o) != err:
-            warnings.warn("WARNING: types do not match, autoconverting with o.err=0")
-            o = err(str(o), 0)
+        o = self._ensure_err(o)
         ans =  o.val / self.val
         error = math.sqrt((self.err/self.val)**2 + (o.err/o.val)**2)*ans
         print("sqrt((",self.err,"/",self.val,")^2 + (",o.err,"/",o.val,")^2)*",ans,"=",error)
-        return err(str(ans), error)
+        return err(ans, error)
 
     def __pow__(self, o):
         if type(o) != err: #exponents need to be exact
@@ -109,7 +103,7 @@ class err():
         print("derivative = ", o.val, "*", self.val,"^(",o.val-1,") =",derivative)
         error = abs(derivative)*self.err
         print("|", derivative,"|*", self.err, "=", error)
-        return err(str(ans), error)
+        return err(ans, error)
 
     def __rpow__(self, o):
         if type(o) != err: #exponents need to be exact
@@ -122,8 +116,11 @@ class err():
         print("derivative = ", self.val, "*", o.val,"^(",self.val-1,") =", derivative)
         error = abs(derivative)*o.err
         print("|", derivative,"|*", o.err, "=", error)
-        return err(str(ans), error)
+        return err(ans, error)
     #output formatting
-    def __str__(self):
+    #def __str__(self):
+    #    return str(self.val) + " ± " + str(self.err) + " ( % " + str(round(self.err/self.val*100,4)) + " )"
 
-        return str(self.val) + " ± " + str(self.err) + " ( % " + str(round(self.err/self.val*100,4)) + " )"
+    def __repr__(self):
+        return "err(" + str(self.val) + ", err=" + str(self.err) + ")"
+
