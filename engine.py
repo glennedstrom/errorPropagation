@@ -7,9 +7,9 @@ import warnings
 The motivation for this autograd update is to:
 1. Proprely handle backpropagation in cases like: L = ax + bx
 - The first one would think dL/dx = a
-- The second one would think dL/dx = b; 
+- The second one would think dL/dx = b;
 - Actual answer: dL/dx == a + b
-2. I want to see how error propagates through neural networks to find out if the result is nonsensical. 
+2. I want to see how error propagates through neural networks to find out if the result is nonsensical.
 - The more layers you have, the more calculations so possibly the more error? 
 - If computed with the partial derivative of the output w.r.t inputs, it seems like it should work no matter what because it is based on how much a small change in the inputs affects the outputs)
 """
@@ -30,9 +30,7 @@ class err():
     """
 
     def __init__(self, val, err=0.0):
-
         # warn if the input wasn't a string originally
-        self.str = str(val)
         self.val = float(val)   # number
         self.err = float(err)   # plus/minus error
 
@@ -46,10 +44,8 @@ class err():
     # operation overloading
 
     def __add__(self, o):
-
         ans = self.val + o.val
 
-        print("sqrt(", self.err, "^2 + ", o.err, "^2)")
         return err(ans, math.sqrt(self.err**2 + o.err**2))
     __radd__ = __add__
 
@@ -58,7 +54,6 @@ class err():
 
         ans = self.val - o.val
 
-        print("sqrt(", self.err, "^2 + ", o.err, "^2)")
         return err(ans, math.sqrt(self.err**2 + o.err**2))
 
     def __rsub__(self, o):
@@ -66,7 +61,6 @@ class err():
 
         ans = o.val - self.val
 
-        print("sqrt(", self.err, "^2 + ", o.err, "^2)")
         return err(ans, math.sqrt(self.err**2 + o.err**2))
 
     def __mul__(self, o):
@@ -75,7 +69,6 @@ class err():
         ans = self.val * o.val
 
         error = math.sqrt((self.err/self.val)**2 + (o.err/o.val)**2)*ans
-        print("sqrt((",self.err,"/",self.val,")^2 + (",o.err,"/",o.val,")^2)*",ans,"=",error)
         return err(ans, error)
     __rmul__ = __mul__
 
@@ -83,16 +76,15 @@ class err():
         o = self._ensure_err(o)
         ans = self.val / o.val
         error = math.sqrt((self.err/self.val)**2 + (o.err/o.val)**2)*ans
-        print("sqrt((",self.err,"/",self.val,")^2 + (",o.err,"/",o.val,")^2)*",ans,"=",error)
         return err(ans, error)
 
     def __rtruediv__(self, o):
         o = self._ensure_err(o)
         ans =  o.val / self.val
         error = math.sqrt((self.err/self.val)**2 + (o.err/o.val)**2)*ans
-        print("sqrt((",self.err,"/",self.val,")^2 + (",o.err,"/",o.val,")^2)*",ans,"=",error)
         return err(ans, error)
 
+    # TODO: Redo these with autograd, then exponents won't have to be exact
     def __pow__(self, o):
         if type(o) != err: #exponents need to be exact
             o = err(str(o), 0)
@@ -100,9 +92,7 @@ class err():
             warnings.warn("WARNING: your exponent needs to be exact; ignoring error...")
         ans = self.val ** o.val
         derivative = o.val*self.val**(o.val-1)
-        print("derivative = ", o.val, "*", self.val,"^(",o.val-1,") =",derivative)
         error = abs(derivative)*self.err
-        print("|", derivative,"|*", self.err, "=", error)
         return err(ans, error)
 
     def __rpow__(self, o):
@@ -113,9 +103,7 @@ class err():
 
         ans =  o.val ** self.val
         derivative = self.val*o.val**(self.val-1)
-        print("derivative = ", self.val, "*", o.val,"^(",self.val-1,") =", derivative)
         error = abs(derivative)*o.err
-        print("|", derivative,"|*", o.err, "=", error)
         return err(ans, error)
     #output formatting
     #def __str__(self):
